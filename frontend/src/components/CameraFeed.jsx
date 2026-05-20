@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, CameraOff, Video, VideoOff, Info, HelpCircle } from 'lucide-react';
+import { Camera, CameraOff, Info, Edit3 } from 'lucide-react';
 
 export default function CameraFeed({
   isCameraOn,
@@ -9,7 +9,8 @@ export default function CameraFeed({
   videoRef,
   canvasRef,
   isUsingSimulated,
-  setIsUsingSimulated
+  setIsUsingSimulated,
+  editingPhoto
 }) {
   const [stream, setStream] = useState(null);
   const [permissionError, setPermissionError] = useState(false);
@@ -19,7 +20,7 @@ export default function CameraFeed({
   // Request/release camera stream
   useEffect(() => {
     async function startCamera() {
-      if (!isCameraOn) return;
+      if (!isCameraOn || editingPhoto) return;
       setPermissionError(false);
       setIsUsingSimulated(false);
 
@@ -49,7 +50,7 @@ export default function CameraFeed({
       }
     }
 
-    if (isCameraOn) {
+    if (isCameraOn && !editingPhoto) {
       startCamera();
     } else {
       stopCamera();
@@ -58,11 +59,11 @@ export default function CameraFeed({
     return () => {
       stopCamera();
     };
-  }, [isCameraOn]);
+  }, [isCameraOn, editingPhoto]);
 
   // Simulation Render Loop
   useEffect(() => {
-    if (!isCameraOn || !isUsingSimulated) {
+    if (!isCameraOn || !isUsingSimulated || editingPhoto) {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
@@ -86,11 +87,9 @@ export default function CameraFeed({
     const render = () => {
       frame++;
       
-      // Cream retro background canvas
       ctx.fillStyle = '#FDFBF7';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Fine-line drawing background grids
       ctx.strokeStyle = 'rgba(58, 51, 53, 0.05)';
       ctx.lineWidth = 1;
       const gridSize = 40;
@@ -107,7 +106,6 @@ export default function CameraFeed({
         ctx.stroke();
       }
 
-      // Drifting particles
       particles.forEach(p => {
         p.x += p.vx;
         p.y += p.vy;
@@ -124,11 +122,9 @@ export default function CameraFeed({
         ctx.stroke();
       });
 
-      // Smiley camera mascot
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2 + Math.sin(frame * 0.04) * 12);
       
-      // Camera body housing
       ctx.fillStyle = '#E2DCF0';
       ctx.strokeStyle = '#3A3335';
       ctx.lineWidth = 4;
@@ -137,14 +133,12 @@ export default function CameraFeed({
       ctx.fill();
       ctx.stroke();
 
-      // Top Flash Unit
       ctx.beginPath();
       ctx.roundRect(-35, -60, 25, 15, 4);
       ctx.fillStyle = '#D6E4DC';
       ctx.fill();
       ctx.stroke();
 
-      // Rainbow vertical stripe on simulated camera body
       ctx.fillStyle = '#F7D6D0';
       ctx.fillRect(-15, -43, 8, 86);
       ctx.fillStyle = '#D6E4DC';
@@ -152,7 +146,6 @@ export default function CameraFeed({
       ctx.fillStyle = '#E2DCF0';
       ctx.fillRect(1, -43, 8, 86);
 
-      // Lens element
       ctx.beginPath();
       ctx.arc(20, 0, 30, 0, Math.PI * 2);
       ctx.fillStyle = '#FDFBF7';
@@ -164,14 +157,12 @@ export default function CameraFeed({
       ctx.fillStyle = '#3A3335';
       ctx.fill();
 
-      // Reflection dot
       ctx.beginPath();
       ctx.arc(15, -5, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#FFFFFF';
       ctx.fill();
       ctx.restore();
 
-      // Animated Sine Tracking Rectangle
       const trackX = canvas.width / 2 + Math.cos(frame * 0.015) * 60;
       const trackY = canvas.height / 2 + Math.sin(frame * 0.02) * 40;
       const size = 110 + Math.sin(frame * 0.04) * 8;
@@ -182,35 +173,30 @@ export default function CameraFeed({
       ctx.beginPath();
       ctx.roundRect(trackX - size/2, trackY - size/2, size, size, 16);
       ctx.stroke();
-      ctx.setLineDash([]); // Reset dash
+      ctx.setLineDash([]); 
 
-      // Corner accent strokes
       ctx.strokeStyle = '#3A3335';
       ctx.lineWidth = 4;
       const len = 12;
       const offset = size / 2;
       
-      // Top Left
       ctx.beginPath();
       ctx.moveTo(trackX - offset, trackY - offset + len);
       ctx.lineTo(trackX - offset, trackY - offset);
       ctx.lineTo(trackX - offset + len, trackY - offset);
       ctx.stroke();
 
-      // Bottom Right
       ctx.beginPath();
       ctx.moveTo(trackX + offset, trackY + offset - len);
       ctx.lineTo(trackX + offset, trackY + offset);
       ctx.lineTo(trackX + offset - len, trackY + offset);
       ctx.stroke();
 
-      // Timestamp calculation
       const totalSeconds = Math.floor(frame / 60);
       const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
       const seconds = String(totalSeconds % 60).padStart(2, '0');
       const milliseconds = String(Math.floor((frame % 60) * 1.66)).padStart(2, '0');
       
-      // Retro HUD texts
       ctx.fillStyle = '#3A3335';
       ctx.font = 'bold 12px "Courier New", monospace';
       ctx.fillText(`● REC ${minutes}:${seconds}:${milliseconds}`, 20, 30);
@@ -228,7 +214,7 @@ export default function CameraFeed({
         cancelAnimationFrame(animationFrameId.current);
       }
     };
-  }, [isCameraOn, isUsingSimulated]);
+  }, [isCameraOn, isUsingSimulated, editingPhoto]);
 
   // Translate filter selection to css classes
   const getFilterClass = () => {
@@ -245,11 +231,11 @@ export default function CameraFeed({
   return (
     <div className="relative w-full max-w-2xl mx-auto flex flex-col items-center select-none">
       
-      {/* Anonymous/LoggedOut Alert Banner - Neo-brutalist style */}
-      {!isLoggedIn && (
+      {/* Informative banners on guest session state */}
+      {!isLoggedIn && !editingPhoto && (
         <div className="absolute -top-12 z-20 animate-bounce flex items-center gap-2 bg-[#FDFBF7] border-3 border-deep-charcoal rounded-xl px-4 py-2 shadow-[3px_3px_0px_0px_rgba(58,51,53,1)] text-xs font-black text-deep-charcoal">
           <Info className="w-4 h-4 text-white bg-deep-charcoal rounded-full p-0.5" />
-          <span>Keep your memories! Create a free vault.</span>
+          <span>Guest Mode: Snapped photos are saved to your session vault!</span>
         </div>
       )}
 
@@ -266,37 +252,55 @@ export default function CameraFeed({
 
         {/* Top bar indicators */}
         <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-          {/* LED Green power light */}
+          {/* LED status light */}
           <div className="flex items-center gap-1.5 bg-deep-charcoal text-white rounded-full px-2.5 py-1 text-[9px] font-bold tracking-widest border-2 border-deep-charcoal">
-            <span className={`w-2 h-2 rounded-full border border-white/20 ${isCameraOn ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'}`} />
-            <span>{isCameraOn ? 'SYS READY' : 'SYS STDBY'}</span>
+            <span className={`w-2 h-2 rounded-full border border-white/20 ${editingPhoto ? 'bg-amber-400 animate-pulse' : isCameraOn ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'}`} />
+            <span>{editingPhoto ? 'SYS EDITING' : isCameraOn ? 'SYS READY' : 'SYS STDBY'}</span>
           </div>
         </div>
 
-        {/* Viewport toggle button */}
-        <div className="absolute top-4 right-4 z-20">
-          <button
-            onClick={() => setIsCameraOn(!isCameraOn)}
-            className="retro-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase text-deep-charcoal cursor-pointer shadow-[2px_2px_0px_0px_rgba(58,51,53,1)]"
-          >
-            {isCameraOn ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute" />
-                <span className="w-2 h-2 rounded-full bg-emerald-500 relative animate-pulse" />
-                <span>🎥 CAMERA ON</span>
-              </>
-            ) : (
-              <>
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span>❌ CAMERA OFF</span>
-              </>
-            )}
-          </button>
-        </div>
+        {/* Viewport toggle button - disabled in editing mode */}
+        {!editingPhoto && (
+          <div className="absolute top-4 right-4 z-20">
+            <button
+              onClick={() => setIsCameraOn(!isCameraOn)}
+              className="retro-btn flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase text-deep-charcoal cursor-pointer shadow-[2px_2px_0px_0px_rgba(58,51,53,1)]"
+            >
+              {isCameraOn ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 relative animate-pulse" />
+                  <span>🎥 CAMERA ON</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span>❌ CAMERA OFF</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Viewfinder Lens screen */}
         <div className="w-full h-full pt-4 relative bg-muted-lavender overflow-hidden">
-          {isCameraOn ? (
+          {editingPhoto ? (
+            /* Render Static Selected Photo inside the viewfinder chassis */
+            <div className="w-full h-full relative flex items-center justify-center bg-stone-100 animate-fade-in">
+              <img
+                src={editingPhoto.url}
+                alt="Editing Snapshot"
+                className={`w-full h-full object-cover transition-all duration-200 ${getFilterClass()}`}
+              />
+              <div className="absolute bottom-4 left-4 bg-deep-charcoal/80 text-white rounded-lg px-2.5 py-1 text-[10px] font-bold flex items-center gap-1.5">
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Adjusting Filter</span>
+              </div>
+              {/* Glass Scanlines and Grain Overlay */}
+              <div className="absolute inset-0 pointer-events-none grain-overlay opacity-80" />
+              <div className="absolute inset-0 pointer-events-none scanlines-overlay opacity-30" />
+            </div>
+          ) : isCameraOn ? (
             <div className="w-full h-full relative">
               {/* Web Video Stream */}
               <video
