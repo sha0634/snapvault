@@ -4,7 +4,7 @@ import CameraFeed from './components/CameraFeed';
 import FilterCarousel from './components/FilterCarousel';
 import ActionRow from './components/ActionRow';
 import VaultSidebar from './components/VaultSidebar';
-import { Download, Sparkles } from 'lucide-react';
+import { Download, Sparkles, ArrowLeft } from 'lucide-react';
 import './App.css';
 
 // Pre-loaded high-quality polaroid pictures
@@ -15,29 +15,35 @@ const INITIAL_MOCK_PHOTOS = [
 ];
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [activeFilter, setActiveFilter] = useState('normal');
   const [isUsingSimulated, setIsUsingSimulated] = useState(false);
   const [isVaultOpen, setIsVaultOpen] = useState(true);
-  const [capturedPhotos, setCapturedPhotos] = useState(INITIAL_MOCK_PHOTOS);
+  const [capturedPhotos, setCapturedPhotos] = useState([]);
   const [printedPhoto, setPrintedPhoto] = useState(null);
+
+  // Post-Capture Edit State
+  const [selectedPhotoId, setSelectedPhotoId] = useState(null);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Auto-toggle sidebar depending on auth state
+  // Set mock photos if logged in, clear or keep in guest session
   useEffect(() => {
     if (isLoggedIn) {
-      setIsVaultOpen(true);
+      setCapturedPhotos(prev => {
+        const userOnly = prev.filter(p => !p.id.startsWith('mock-'));
+        return [...userOnly, ...INITIAL_MOCK_PHOTOS];
+      });
     } else {
-      setIsVaultOpen(false);
+      setCapturedPhotos(prev => prev.filter(p => !p.id.startsWith('mock-')));
     }
   }, [isLoggedIn]);
 
   // Shutter action to capture frame and trigger instant-print animation
   const handleShutterClick = () => {
-    if (!isCameraOn) return;
+    if (!isCameraOn || selectedPhotoId) return;
 
     // 1. Trigger visual camera flash overlay animation
     const flash = document.getElementById('camera-flash-overlay');
@@ -73,17 +79,9 @@ export default function App() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // Translate our filter strings into real canvas context filters
-    let filterStr = 'none';
-    if (activeFilter === 'mono') filterStr = 'grayscale(100%) contrast(120%) brightness(95%)';
-    else if (activeFilter === 'cyber') filterStr = 'hue-rotate(130deg) saturate(180%) contrast(115%) brightness(102%)';
-    else if (activeFilter === 'sunset') filterStr = 'sepia(35%) saturate(150%) hue-rotate(-12deg) contrast(108%)';
-    else if (activeFilter === 'vintage') filterStr = 'sepia(55%) contrast(92%) brightness(105%) saturate(80%)';
-    else if (activeFilter === 'sweet') filterStr = 'saturate(150%) hue-rotate(18deg) brightness(104%)';
-    
-    ctx.filter = filterStr;
+    // Reset filter to capture raw unfiltered snapshot
+    ctx.filter = 'none';
 
-    // Capture from simulation canvas or real video element
     if (isUsingSimulated) {
       const simCanvas = document.querySelector('canvas:not(.hidden)');
       if (simCanvas) {
@@ -95,10 +93,7 @@ export default function App() {
       }
     }
 
-    // Generate snapshot image URL
     const imageUrl = canvas.toDataURL('image/png');
-    
-    // Construct new Polaroid object with date metadata tag
     const dateStr = new Date().toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -112,12 +107,7 @@ export default function App() {
       filter: activeFilter
     };
 
-    // Save to local vault if user is logged in
-    if (isLoggedIn) {
-      setCapturedPhotos(prev => [newPhoto, ...prev]);
-    }
-
-    // Eject Polaroid from bottom frame
+    setCapturedPhotos(prev => [newPhoto, ...prev]);
     setPrintedPhoto(newPhoto);
   };
 
@@ -131,43 +121,46 @@ export default function App() {
       pCanvas.height = 860;
       const pCtx = pCanvas.getContext('2d');
 
-      // 1. Draw polaroid card base card
       pCtx.fillStyle = '#FFFFFF';
       pCtx.fillRect(0, 0, pCanvas.width, pCanvas.height);
       
-      // Black border outline
       pCtx.strokeStyle = '#3A3335';
       pCtx.lineWidth = 6;
       pCtx.strokeRect(0, 0, pCanvas.width, pCanvas.height);
 
-      // 2. Draw photo centered in top section (40px margins)
       const border = 40;
       const imgWidth = 620; 
       const imgHeight = 465; 
+
+      let filterStr = 'none';
+      if (photo.filter === 'mono') filterStr = 'grayscale(100%) contrast(120%) brightness(95%)';
+      else if (photo.filter === 'cyber') filterStr = 'hue-rotate(130deg) saturate(180%) contrast(115%) brightness(102%)';
+      else if (photo.filter === 'sunset') filterStr = 'sepia(35%) saturate(150%) hue-rotate(-12deg) contrast(108%)';
+      else if (photo.filter === 'vintage') filterStr = 'sepia(55%) contrast(92%) brightness(105%) saturate(80%)';
+      else if (photo.filter === 'sweet') filterStr = 'saturate(150%) hue-rotate(18deg) brightness(104%)';
       
+      pCtx.save();
+      pCtx.filter = filterStr;
       pCtx.fillStyle = '#FDFBF7';
       pCtx.fillRect(border, border, imgWidth, imgHeight);
       pCtx.drawImage(img, border, border, imgWidth, imgHeight);
+      pCtx.restore();
 
-      // Inner image stroke
       pCtx.strokeStyle = '#3A3335';
       pCtx.lineWidth = 4;
       pCtx.strokeRect(border, border, imgWidth, imgHeight);
 
-      // 3. Draw handwritten date text
       pCtx.fillStyle = '#3A3335';
       pCtx.font = 'bold 56px "Caveat", cursive';
       pCtx.textAlign = 'center';
       pCtx.fillText(photo.date, pCanvas.width / 2, 690);
 
-      // 4. Subtle filter badge
       if (photo.filter !== 'normal') {
         pCtx.fillStyle = 'rgba(58, 51, 53, 0.4)';
         pCtx.font = 'bold 12px "Inter", sans-serif';
         pCtx.fillText(`PRESET: ${photo.filter.toUpperCase()}`, pCanvas.width / 2, 755);
       }
 
-      // 5. Trigger download link
       const link = document.createElement('a');
       link.download = `snapvault-${photo.id}.png`;
       link.href = pCanvas.toDataURL('image/png');
@@ -175,8 +168,26 @@ export default function App() {
     };
   };
 
-  const handleReapplyFilter = (filterKey) => {
-    setActiveFilter(filterKey);
+  const handleFilterChange = (filterId) => {
+    if (selectedPhotoId) {
+      setCapturedPhotos(prev =>
+        prev.map(p => (p.id === selectedPhotoId ? { ...p, filter: filterId } : p))
+      );
+      if (printedPhoto && printedPhoto.id === selectedPhotoId) {
+        setPrintedPhoto(prev => ({ ...prev, filter: filterId }));
+      }
+    } else {
+      setActiveFilter(filterId);
+    }
+  };
+
+  const handleSelectPhoto = (photo) => {
+    if (selectedPhotoId === photo.id) {
+      setSelectedPhotoId(null);
+    } else {
+      setSelectedPhotoId(photo.id);
+      setPrintedPhoto(null); 
+    }
   };
 
   const handleDeletePhoto = (photoId) => {
@@ -184,7 +195,14 @@ export default function App() {
     if (printedPhoto && printedPhoto.id === photoId) {
       setPrintedPhoto(null);
     }
+    if (selectedPhotoId === photoId) {
+      setSelectedPhotoId(null);
+    }
   };
+
+  const editingPhoto = selectedPhotoId
+    ? capturedPhotos.find(p => p.id === selectedPhotoId)
+    : null;
 
   return (
     <div className="flex flex-col min-h-screen bg-[#FDFBF7] antialiased overflow-hidden retro-grid-bg relative">
@@ -196,107 +214,153 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden">
         
         {/* Photobooth Canvas Area */}
-        <main className="flex-grow flex flex-col items-center justify-start py-8 px-4 md:px-8 overflow-y-auto no-scrollbar max-w-4xl mx-auto w-full transition-all duration-300">
+        <main className="flex-grow flex flex-col items-center justify-start py-6 px-4 md:px-8 overflow-y-auto no-scrollbar w-full transition-all duration-300">
           
-          {/* Sparkly Retro Banner Badge */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-muted-lavender border-3 border-deep-charcoal text-xs font-black text-deep-charcoal mb-5 shadow-[3px_3px_0px_0px_rgba(58,51,53,1)] select-none">
-            <Sparkles className="w-4 h-4 text-deep-charcoal animate-spin" style={{ animationDuration: '6s' }} />
-            <span>RETRO PHOTOBOOTH ENGINE v4.0</span>
-          </div>
-
-          {/* Viewfinder block */}
-          <CameraFeed
-            isCameraOn={isCameraOn}
-            setIsCameraOn={setIsCameraOn}
-            isLoggedIn={isLoggedIn}
-            activeFilter={activeFilter}
-            videoRef={videoRef}
-            canvasRef={canvasRef}
-            isUsingSimulated={isUsingSimulated}
-            setIsUsingSimulated={setIsUsingSimulated}
-          />
-
-          {/* Ejection slot (Physical Camera hardware slit) */}
-          <div className="w-64 h-5 bg-deep-charcoal border-4 border-deep-charcoal rounded-full mx-auto relative z-20 shadow-[inset_0_4px_6px_rgba(0,0,0,0.6)] -mt-2.5" />
-
-          {/* Polaroid Instant Print Ejection Slot */}
-          <div className="relative w-full max-w-2xl overflow-hidden h-[330px] flex justify-center pointer-events-none select-none z-10">
-            {printedPhoto && (
-              <div className="absolute top-0 w-56 bg-white border-4 border-deep-charcoal p-2.5 pb-6 shadow-[5px_5px_0px_0px_rgba(58,51,53,1)] rounded-none animate-print-slot pointer-events-auto transition-all hover:rotate-1 hover:scale-102">
-                
-                {/* Captured Polaroid Picture Frame */}
-                <div className="relative aspect-[4/3] w-full bg-stone-100 overflow-hidden border-2 border-deep-charcoal">
-                  <img
-                    src={printedPhoto.url}
-                    alt="Printed Snapshot"
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Filter tag inside printed card */}
-                  {printedPhoto.filter !== 'normal' && (
-                    <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/75 text-white font-mono text-[7px] uppercase tracking-wider font-bold">
-                      {printedPhoto.filter}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Handwritten date */}
-                <div className="font-handwriting text-center text-deep-charcoal mt-2.5 text-xl font-bold select-none leading-none tracking-wide text-ellipsis overflow-hidden whitespace-nowrap">
-                  {printedPhoto.date}
-                </div>
-
-                {/* Instant Hover Overlay panel inside printed card */}
-                <div className="absolute inset-0 bg-white/95 opacity-0 hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-2.5 px-4 border border-deep-charcoal">
-                  <span className="font-display font-black text-[10px] uppercase tracking-widest text-deep-charcoal">
-                    PRINT COMPLETED!
-                  </span>
-                  <div className="flex gap-1.5 mt-2">
-                    <button
-                      onClick={() => downloadPolaroid(printedPhoto)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blush-pink border-2 border-deep-charcoal font-black text-[10px] uppercase text-deep-charcoal hover:bg-[#F9C3BA] cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>SAVE</span>
-                    </button>
-                    <button
-                      onClick={() => setPrintedPhoto(null)}
-                      className="px-3 py-1.5 rounded-lg bg-white border-2 border-deep-charcoal font-black text-[10px] uppercase text-deep-charcoal hover:bg-stone-50 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
-                    >
-                      CLEAR
-                    </button>
-                  </div>
-                </div>
+          {/* Main workspace layout */}
+          <div className="flex flex-col lg:flex-row gap-8 items-start justify-center w-full max-w-6xl mx-auto mt-4">
+            
+            {/* LEFT COLUMN: Printed Polaroid Dry Tray */}
+            <div className="w-full lg:w-60 flex flex-col items-center shrink-0 order-3 lg:order-1 mt-6 lg:mt-0">
+              <div className="font-display font-black text-[10px] uppercase tracking-widest text-deep-charcoal/40 bg-deep-charcoal/5 px-3 py-1 rounded-md border border-deep-charcoal/10 mb-4 select-none">
+                🎞️ LATEST PRINT
               </div>
-            )}
+
+              <div className="relative min-h-[300px] w-full flex justify-center items-start">
+                {printedPhoto ? (
+                  <div className="w-52 bg-white border-4 border-deep-charcoal p-2.5 pb-6 shadow-[5px_5px_0px_0px_rgba(58,51,53,1)] rounded-none animate-print-slot pointer-events-auto transition-all hover:rotate-1 hover:scale-102">
+                    <div className="relative aspect-[4/3] w-full bg-stone-100 overflow-hidden border-2 border-deep-charcoal">
+                      <img
+                        src={printedPhoto.url}
+                        alt="Latest Print"
+                        className={`w-full h-full object-cover filter-${printedPhoto.filter}`}
+                      />
+                      {printedPhoto.filter !== 'normal' && (
+                        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/75 text-white font-mono text-[7px] uppercase tracking-wider font-bold">
+                          {printedPhoto.filter}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="font-handwriting text-center text-deep-charcoal mt-2.5 text-xl font-bold select-none leading-none tracking-wide text-ellipsis overflow-hidden whitespace-nowrap">
+                      {printedPhoto.date}
+                    </div>
+
+                    <div className="absolute inset-0 bg-white/95 opacity-0 hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center gap-2.5 px-4 border border-deep-charcoal">
+                      <span className="font-display font-black text-[10px] uppercase tracking-widest text-deep-charcoal">
+                        PRINT OUT!
+                      </span>
+                      <div className="flex gap-1.5 mt-2">
+                        <button
+                          onClick={() => downloadPolaroid(printedPhoto)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blush-pink border-2 border-deep-charcoal font-black text-[9px] uppercase text-deep-charcoal hover:bg-[#F9C3BA] cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>SAVE</span>
+                        </button>
+                        <button
+                          onClick={() => setPrintedPhoto(null)}
+                          className="px-2.5 py-1.5 rounded-lg bg-white border-2 border-deep-charcoal font-black text-[9px] uppercase text-deep-charcoal hover:bg-stone-50 cursor-pointer shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+                        >
+                          CLEAR
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-52 h-[270px] border-4 border-dashed border-deep-charcoal/15 rounded-2xl flex flex-col items-center justify-center text-center p-5 bg-white/20 select-none">
+                    <span className="text-3xl opacity-20 mb-2">📸</span>
+                    <span className="font-display font-black text-[9px] uppercase tracking-widest text-deep-charcoal/30 leading-tight">
+                      NO PRINT YET
+                    </span>
+                    <span className="text-[8px] font-bold text-deep-charcoal/20 uppercase tracking-wider mt-1 max-w-[120px]">
+                      Take a snapshot to dry print here
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CENTER COLUMN: Live Camera console & Control buttons */}
+            <div className="flex-grow max-w-2xl w-full flex flex-col items-center order-1 lg:order-2">
+              
+              {/* Sparkly Retro Banner Badge / Mode Indicators */}
+              {editingPhoto ? (
+                <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-blush-pink border-3 border-deep-charcoal text-xs font-black text-deep-charcoal mb-4 shadow-[3px_3px_0px_0px_rgba(58,51,53,1)] select-none animate-pulse">
+                  <Sparkles className="w-4 h-4 text-deep-charcoal" />
+                  <span>EDITING PHOTO FILTER ({editingPhoto.filter.toUpperCase()})</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-muted-lavender border-3 border-deep-charcoal text-xs font-black text-deep-charcoal mb-4 shadow-[3px_3px_0px_0px_rgba(58,51,53,1)] select-none">
+                  <Sparkles className="w-4 h-4 text-deep-charcoal animate-spin" style={{ animationDuration: '6s' }} />
+                  <span>{isLoggedIn ? 'RETRO PHOTOBOOTH ENGINE v4.0' : 'GUEST SESSION ACTIVE'}</span>
+                </div>
+              )}
+
+              {/* Viewfinder block */}
+              <CameraFeed
+                isCameraOn={isCameraOn}
+                setIsCameraOn={setIsCameraOn}
+                isLoggedIn={isLoggedIn}
+                activeFilter={editingPhoto ? editingPhoto.filter : activeFilter}
+                videoRef={videoRef}
+                canvasRef={canvasRef}
+                isUsingSimulated={isUsingSimulated}
+                setIsUsingSimulated={setIsUsingSimulated}
+                editingPhoto={editingPhoto}
+              />
+
+              {/* Filter carousel */}
+              <FilterCarousel
+                activeFilter={editingPhoto ? editingPhoto.filter : activeFilter}
+                setActiveFilter={handleFilterChange}
+                isCameraOn={isCameraOn}
+              />
+
+              {/* Action trigger row */}
+              {editingPhoto ? (
+                <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 mt-6 px-6">
+                  <button
+                    onClick={() => downloadPolaroid(editingPhoto)}
+                    className="retro-btn flex items-center gap-2 px-5 py-3.5 bg-muted-lavender text-xs font-black uppercase text-deep-charcoal rounded-xl shadow-[3px_3px_0px_0px_rgba(58,51,53,1)] hover:bg-blush-pink cursor-pointer w-full sm:w-auto"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Save Edited Polaroid</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedPhotoId(null)}
+                    className="retro-btn flex items-center gap-2 px-5 py-3.5 bg-white text-xs font-black uppercase text-deep-charcoal rounded-xl shadow-[3px_3px_0px_0px_rgba(58,51,53,1)] cursor-pointer w-full sm:w-auto"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Return to Camera</span>
+                  </button>
+                </div>
+              ) : (
+                <ActionRow
+                  onShutterClick={handleShutterClick}
+                  onDownloadClick={() => printedPhoto && downloadPolaroid(printedPhoto)}
+                  isCameraOn={isCameraOn}
+                  latestPhoto={printedPhoto}
+                />
+              )}
+
+            </div>
+
           </div>
-
-          {/* Filter carousel */}
-          <FilterCarousel
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            isCameraOn={isCameraOn}
-          />
-
-          {/* Action trigger row */}
-          <ActionRow
-            onShutterClick={handleShutterClick}
-            onDownloadClick={() => printedPhoto && downloadPolaroid(printedPhoto)}
-            isCameraOn={isCameraOn}
-            latestPhoto={printedPhoto}
-          />
 
         </main>
 
         {/* Polaroid Vault History Sidebar */}
-        {isLoggedIn && (
-          <VaultSidebar
-            photos={capturedPhotos}
-            onDeletePhoto={handleDeletePhoto}
-            onDownloadPhoto={downloadPolaroid}
-            onReapplyFilter={handleReapplyFilter}
-            isOpen={isVaultOpen}
-            setIsOpen={setIsVaultOpen}
-          />
-        )}
+        <VaultSidebar
+          photos={capturedPhotos}
+          onDeletePhoto={handleDeletePhoto}
+          onDownloadPhoto={downloadPolaroid}
+          onReapplyFilter={handleSelectPhoto}
+          isOpen={isVaultOpen}
+          setIsOpen={setIsVaultOpen}
+          isLoggedIn={isLoggedIn}
+          setIsLoggedIn={setIsLoggedIn}
+          selectedPhotoId={selectedPhotoId}
+        />
       </div>
     </div>
   );
