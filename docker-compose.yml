@@ -1,3 +1,4 @@
+name: snapvault
 version: '3.8'
 
 services:
