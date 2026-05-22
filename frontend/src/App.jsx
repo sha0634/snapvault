@@ -43,7 +43,7 @@ export default function App() {
     }
   }, []);
 
-  const fetchPhotosFromBackend = async (token) => {
+  async function fetchPhotosFromBackend(token) {
     try {
       const response = await fetch('http://localhost:5000/api/photos', {
         headers: {
@@ -58,9 +58,9 @@ export default function App() {
         handleLogout();
       }
     } catch (err) {
-      console.error('Could not fetch photos from backend:', err);
+      console.error('Error fetching photos:', err);
     }
-  };
+  }
 
   const handleLoginSuccess = (user, token) => {
     localStorage.setItem('snapvault_token', token);
