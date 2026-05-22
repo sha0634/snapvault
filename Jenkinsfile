@@ -23,7 +23,7 @@ pipeline {
             steps {
                 echo '=== Stage 3: Rebuilding Application Containers ==='
                 // Rebuilds frontend and backend docker images using local docker daemon
-                sh 'docker compose build'
+                sh 'docker compose build backend frontend'
             }
         }
 
@@ -31,7 +31,7 @@ pipeline {
             steps {
                 echo '=== Stage 4: Hot-Recreating Running Services ==='
                 // Restarts frontend and backend services in detached mode
-                sh 'docker compose up -d'
+                sh 'docker compose up -d backend frontend'
             }
         }
     }
