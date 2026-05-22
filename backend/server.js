@@ -5,15 +5,47 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const { S3Client, PutObjectCommand, DeleteObjectCommand, CreateBucketCommand, HeadBucketCommand } = require('@aws-sdk/client-s3');
+const promClient = require('prom-client');
 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'snapvault-super-secret-key-1337';
 
+// Collect default metrics (CPU, memory, etc.)
+promClient.collectDefaultMetrics();
+
+// Define a histogram for HTTP request durations
+const httpRequestDurationSeconds = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'code'],
+  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10]
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Support base64 image uploads
+
+// Measure HTTP request durations
+app.use((req, res, next) => {
+  const start = process.hrtime();
+  res.on('finish', () => {
+    const diff = process.hrtime(start);
+    const durationInSeconds = diff[0] + diff[1] / 1e9;
+    const route = req.route ? req.route.path : req.path;
+    httpRequestDurationSeconds
+      .labels(req.method, route, res.statusCode)
+      .observe(durationInSeconds);
+  });
+  next();
+});
+
+// Metrics endpoint
+app.get('/metrics', async (req, res) => {
+  res.setHeader('Content-Type', promClient.register.contentType);
+  res.send(await promClient.register.metrics());
+});
 
 // Database Connection
 const dbConfig = {
