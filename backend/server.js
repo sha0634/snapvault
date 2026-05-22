@@ -27,6 +27,9 @@ let useMemoryDb = false;
 const memoryUsers = [];
 const memoryPhotos = [];
 
+// Helper delay function
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 // Verify database connection and create tables if connected
 async function initDb() {
   if (!process.env.DATABASE_URL) {
@@ -35,37 +38,48 @@ async function initDb() {
     return;
   }
 
-  try {
-    const client = await pool.connect();
-    console.log('✅ Connected to PostgreSQL successfully!');
-    
-    // Create Users table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL
-      );
-    `);
+  const maxRetries = 5;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Database connection attempt ${attempt}/${maxRetries}...`);
+      const client = await pool.connect();
+      console.log('✅ Connected to PostgreSQL successfully!');
+      
+      // Create Users table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(255) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL
+        );
+      `);
 
-    // Create Photos table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS photos (
-        id VARCHAR(255) PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        url TEXT NOT NULL,
-        date VARCHAR(100) NOT NULL,
-        filter VARCHAR(100) NOT NULL
-      );
-    `);
+      // Create Photos table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS photos (
+          id VARCHAR(255) PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          url TEXT NOT NULL,
+          date VARCHAR(100) NOT NULL,
+          filter VARCHAR(100) NOT NULL
+        );
+      `);
 
-    client.release();
-    console.log('🎉 Database tables initialized.');
-  } catch (err) {
-    console.warn('⚠️  Could not connect to PostgreSQL. Falling back to In-Memory storage.');
-    console.warn(`Reason: ${err.message}`);
-    useMemoryDb = true;
+      client.release();
+      console.log('🎉 Database tables initialized.');
+      useMemoryDb = false;
+      return; // Connection successful, exit function
+    } catch (err) {
+      console.warn(`⚠️  Database connection attempt ${attempt} failed: ${err.message}`);
+      if (attempt < maxRetries) {
+        console.log('Waiting 2 seconds before retrying...');
+        await delay(2000);
+      }
+    }
   }
+
+  console.warn('⚠️  Could not connect to PostgreSQL after multiple retries. Falling back to In-Memory storage.');
+  useMemoryDb = true;
 }
 
 // Authentication Middleware

@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database container
+  db:
+    image: postgres:15-alpine
+    container_name: snapvault-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: snapvault
+      POSTGRES_PASSWORD: snapsecurepass
+      POSTGRES_DB: snapdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # Node.js/Express Backend container
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: snapvault-backend
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      DATABASE_URL: postgresql://snapvault:snapsecurepass@db:5432/snapdb
+      JWT_SECRET: snapvault-super-secret-key-1337
+    depends_on:
+      - db
+    restart: always
+
+  # React Frontend served via Nginx container
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: snapvault-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:
