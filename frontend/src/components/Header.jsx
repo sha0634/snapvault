@@ -1,7 +1,7 @@
 import React from 'react';
-import { Camera, LogIn, LogOut, User, Sparkles } from 'lucide-react';
+import { Camera, LogIn, LogOut, User } from 'lucide-react';
 
-export default function Header({ isLoggedIn, setIsLoggedIn }) {
+export default function Header({ isLoggedIn, username, onLogout, onLoginClick }) {
   return (
     <header className="mx-4 md:mx-8 mt-5 mb-3 bg-white border-4 border-deep-charcoal rounded-2xl py-4 px-6 flex items-center justify-between shadow-[6px_6px_0px_0px_rgba(58,51,53,1)] z-10 transition-all duration-300">
       
@@ -30,13 +30,13 @@ export default function Header({ isLoggedIn, setIsLoggedIn }) {
                 <User className="w-3 h-3 text-deep-charcoal" />
               </div>
               <span className="font-display font-extrabold text-xs text-deep-charcoal tracking-wide">
-                Hi, Developer
+                Hi, {username || 'Developer'}
               </span>
             </div>
             
             {/* Logout Button */}
             <button
-              onClick={() => setIsLoggedIn(false)}
+              onClick={onLogout}
               className="retro-btn flex items-center justify-center w-10 h-10 rounded-xl bg-white hover:bg-blush-pink text-deep-charcoal cursor-pointer"
               title="Sign Out"
             >
@@ -46,7 +46,7 @@ export default function Header({ isLoggedIn, setIsLoggedIn }) {
         ) : (
           /* Login Trigger */
           <button
-            onClick={() => setIsLoggedIn(true)}
+            onClick={onLoginClick}
             className="retro-btn flex items-center gap-2 px-5 py-2.5 rounded-xl font-display font-extrabold text-xs uppercase tracking-wider text-deep-charcoal bg-muted-lavender hover:bg-blush-pink cursor-pointer"
           >
             <LogIn className="w-4 h-4" />
@@ -57,3 +57,4 @@ export default function Header({ isLoggedIn, setIsLoggedIn }) {
     </header>
   );
 }
+

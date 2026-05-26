@@ -4,6 +4,7 @@ import CameraFeed from './components/CameraFeed';
 import FilterCarousel from './components/FilterCarousel';
 import ActionRow from './components/ActionRow';
 import VaultSidebar from './components/VaultSidebar';
+import AuthModal from './components/AuthModal';
 import { Download, Sparkles, ArrowLeft } from 'lucide-react';
 import './App.css';
 
@@ -16,6 +17,8 @@ const INITIAL_MOCK_PHOTOS = [
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [activeFilter, setActiveFilter] = useState('normal');
   const [isUsingSimulated, setIsUsingSimulated] = useState(false);
@@ -29,14 +32,94 @@ export default function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Set mock photos if logged in, clear or keep in guest session
+  // Auto login on mount if token exists
   useEffect(() => {
-    if (isLoggedIn) {
-      setCapturedPhotos(prev => {
-        const userOnly = prev.filter(p => !p.id.startsWith('mock-'));
-        return [...userOnly, ...INITIAL_MOCK_PHOTOS];
+    const token = localStorage.getItem('snapvault_token');
+    const savedUser = localStorage.getItem('snapvault_user');
+    if (token && savedUser) {
+      setIsLoggedIn(true);
+      setUsername(savedUser);
+      fetchPhotosFromBackend(token);
+    }
+  }, []);
+
+  const fetchPhotosFromBackend = async (token) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/photos', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
-    } else {
+      if (response.ok) {
+        const dbPhotos = await response.json();
+        // Load user's photos and combine with initial mock photos
+        setCapturedPhotos([...dbPhotos, ...INITIAL_MOCK_PHOTOS]);
+      } else if (response.status === 403 || response.status === 401) {
+        handleLogout();
+      }
+    } catch (err) {
+      console.error('Could not fetch photos from backend:', err);
+    }
+  };
+
+  const handleLoginSuccess = (user, token) => {
+    localStorage.setItem('snapvault_token', token);
+    localStorage.setItem('snapvault_user', user);
+    setIsLoggedIn(true);
+    setUsername(user);
+    fetchPhotosFromBackend(token);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('snapvault_token');
+    localStorage.removeItem('snapvault_user');
+    setIsLoggedIn(false);
+    setUsername('');
+    setCapturedPhotos(prev => prev.filter(p => !p.id.startsWith('mock-')));
+  };
+
+  const syncPhotoToBackend = async (photo) => {
+    const token = localStorage.getItem('snapvault_token');
+    if (!token) return;
+
+    try {
+      await fetch('http://localhost:5000/api/photos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          id: photo.id,
+          url: photo.url,
+          date: photo.date,
+          filter: photo.filter
+        })
+      });
+    } catch (err) {
+      console.error('Error syncing photo to database:', err);
+    }
+  };
+
+  const deletePhotoFromBackend = async (photoId) => {
+    const token = localStorage.getItem('snapvault_token');
+    if (!token) return;
+
+    try {
+      await fetch(`http://localhost:5000/api/photos/${photoId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (err) {
+      console.error('Error deleting photo from database:', err);
+    }
+  };
+
+  // Set mock photos if logged in (when backend sync isn't triggered)
+  useEffect(() => {
+    if (!isLoggedIn) {
       setCapturedPhotos(prev => prev.filter(p => !p.id.startsWith('mock-')));
     }
   }, [isLoggedIn]);
@@ -109,6 +192,10 @@ export default function App() {
 
     setCapturedPhotos(prev => [newPhoto, ...prev]);
     setPrintedPhoto(newPhoto);
+
+    if (isLoggedIn) {
+      syncPhotoToBackend(newPhoto);
+    }
   };
 
   // Generate Polaroid composite file with white frames and handwriting text for download
@@ -170,9 +257,14 @@ export default function App() {
 
   const handleFilterChange = (filterId) => {
     if (selectedPhotoId) {
-      setCapturedPhotos(prev =>
-        prev.map(p => (p.id === selectedPhotoId ? { ...p, filter: filterId } : p))
-      );
+      setCapturedPhotos(prev => {
+        const updated = prev.map(p => (p.id === selectedPhotoId ? { ...p, filter: filterId } : p));
+        if (isLoggedIn) {
+          const photoToSync = updated.find(p => p.id === selectedPhotoId);
+          if (photoToSync) syncPhotoToBackend(photoToSync);
+        }
+        return updated;
+      });
       if (printedPhoto && printedPhoto.id === selectedPhotoId) {
         setPrintedPhoto(prev => ({ ...prev, filter: filterId }));
       }
@@ -198,6 +290,9 @@ export default function App() {
     if (selectedPhotoId === photoId) {
       setSelectedPhotoId(null);
     }
+    if (isLoggedIn) {
+      deletePhotoFromBackend(photoId);
+    }
   };
 
   const editingPhoto = selectedPhotoId
@@ -208,7 +303,12 @@ export default function App() {
     <div className="flex flex-col min-h-screen bg-[#FDFBF7] antialiased overflow-hidden retro-grid-bg relative">
       
       {/* Header Floating console */}
-      <Header isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />
+      <Header 
+        isLoggedIn={isLoggedIn} 
+        username={username}
+        onLogout={handleLogout}
+        onLoginClick={() => setIsAuthModalOpen(true)} 
+      />
 
       {/* Main Grid Row */}
       <div className="flex-1 flex overflow-hidden">
@@ -358,10 +458,17 @@ export default function App() {
           isOpen={isVaultOpen}
           setIsOpen={setIsVaultOpen}
           isLoggedIn={isLoggedIn}
-          setIsLoggedIn={setIsLoggedIn}
+          onLoginClick={() => setIsAuthModalOpen(true)}
           selectedPhotoId={selectedPhotoId}
         />
       </div>
+
+      {/* Auth Login Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   );
 }

@@ -9,7 +9,7 @@ export default function VaultSidebar({
   isOpen,
   setIsOpen,
   isLoggedIn,
-  setIsLoggedIn,
+  onLoginClick,
   selectedPhotoId
 }) {
   return (
@@ -70,7 +70,7 @@ export default function VaultSidebar({
               Guest photos are local to this session and will be lost on page reload!
             </p>
             <button
-              onClick={() => setIsLoggedIn(true)}
+              onClick={onLoginClick}
               className="retro-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted-lavender hover:bg-[#F7D6D0] text-[9px] font-black uppercase text-deep-charcoal cursor-pointer shadow-[2px_2px_0px_0px_rgba(58,51,53,1)]"
             >
               <LogIn className="w-3.5 h-3.5" />

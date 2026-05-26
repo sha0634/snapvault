@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database container
+  db:
+    image: postgres:15-alpine
+    container_name: snapvault-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: snapvault
+      POSTGRES_PASSWORD: snapsecurepass
+      POSTGRES_DB: snapdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  # Node.js/Express Backend container
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: snapvault-backend
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      DATABASE_URL: postgresql://snapvault:snapsecurepass@db:5432/snapdb
+      JWT_SECRET: snapvault-super-secret-key-1337
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: snapvault-admin
+      S3_SECRET_KEY: snapvault-secure-s3-pass
+      S3_BUCKET: snapvault-photos
+    depends_on:
+      - db
+      - minio
+    restart: always
+
+  # React Frontend served via Nginx container
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: snapvault-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: always
+
+  # S3-Compatible Local Object Storage (MinIO)
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: snapvault-minio
+    ports:
+      - "9000:9000"     # API Port (where our backend uploads files)
+      - "9001:9001"     # Console UI Port (for inspecting files in browser)
+    environment:
+      MINIO_ROOT_USER: snapvault-admin
+      MINIO_ROOT_PASSWORD: snapvault-secure-s3-pass
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    restart: always
+
+  # Jenkins CI/CD Automation container
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    container_name: snapvault-jenkins
+    ports:
+      - "8080:8080"     # Web Console UI
+      - "50000:50000"   # Agent connection port
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+    user: root          # Required to allow Jenkins to access host's docker.sock
+    restart: always
+
+volumes:
+  postgres_data:
+  minio_data:
+  jenkins_data:
