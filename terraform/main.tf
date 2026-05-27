@@ -1,26 +1,34 @@
 terraform {
   required_providers {
-    minio = {
-      source  = "aminueza/minio"
-      version = ">= 3.0.0"
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
     }
   }
 }
 
-provider "minio" {
-  minio_server   = "minio:9000"
-  minio_user     = "snapvault-admin"
-  minio_password = "snapvault-secure-s3-pass"
-  minio_ssl      = false
+provider "aws" {
+  region = "us-east-1"
 }
 
-resource "minio_s3_bucket" "snapvault_bucket" {
-  bucket = "snapvault-photos"
-  acl    = "public"
+resource "aws_s3_bucket" "snapvault_bucket" {
+  bucket = "snapvault-photos-akank"
 }
 
-resource "minio_s3_bucket_policy" "snapvault_policy" {
-  bucket = minio_s3_bucket.snapvault_bucket.bucket
+# AWS blocks public access by default. We must explicitly disable it to allow our public policy.
+resource "aws_s3_bucket_public_access_block" "public_access" {
+  bucket = aws_s3_bucket.snapvault_bucket.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_policy" "snapvault_policy" {
+  bucket     = aws_s3_bucket.snapvault_bucket.id
+  depends_on = [aws_s3_bucket_public_access_block.public_access]
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -28,8 +36,8 @@ resource "minio_s3_bucket_policy" "snapvault_policy" {
         Sid       = "PublicRead"
         Effect    = "Allow"
         Principal = "*"
-        Action    = ["s3:GetObject"]
-        Resource  = ["arn:aws:s3:::snapvault-photos/*"]
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.snapvault_bucket.arn}/*"
       }
     ]
   })

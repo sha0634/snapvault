@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapVault - DevOps & Cloud-Native Architecture Presentation</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --bg-card: rgba(17, 24, 39, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --secondary: #06b6d4;
+      --accent: #ec4899;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font-outfit: 'Outfit', sans-serif;
+      --font-inter: 'Inter', sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-inter);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
+    }
+
+    /* Presentation Container */
+    .presentation-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2.5rem;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .logo-icon svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: white;
+    }
+
+    .logo-text {
+      font-family: var(--font-outfit);
+      font-weight: 700;
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #ffffff, #d1d5db);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-devops {
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Slide Deck viewport */
+    .slide-viewport {
+      flex: 1;
+      position: relative;
+      margin: 1.5rem 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Individual Slide */
+    .slide {
+      position: absolute;
+      width: 100%;
+      max-width: 1200px;
+      height: 100%;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px) scale(0.98);
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      z-index: 1;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+      z-index: 2;
+    }
+
+    /* Slide Grid Layouts */
+    .slide-layout-hero {
+      text-align: center;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .slide-layout-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: center;
+      height: 100%;
+    }
+
+    .slide-layout-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      align-items: center;
+      height: 100%;
+    }
+
+    /* Text elements */
+    .slide-title {
+      font-family: var(--font-outfit);
+      font-size: 2.75rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.02em;
+    }
+
+    .slide-subtitle {
+      font-size: 1.125rem;
+      color: var(--text-muted);
+      max-width: 800px;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    .highlight-text {
+      color: var(--secondary);
+      font-weight: 600;
+    }
+
+    /* Cards and Glassmorphism */
+    .glass-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1.25rem;
+      padding: 2rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      transition: border-color 0.3s, transform 0.3s;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-family: var(--font-outfit);
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #ffffff;
+    }
+
+    .card-title svg {
+      width: 1.5rem;
+      height: 1.5rem;
+      color: var(--primary);
+    }
+
+    .glass-card ul {
+      list-style-type: none;
+    }
+
+    .glass-card li {
+      margin-bottom: 0.75rem;
+      position: relative;
+      padding-left: 1.5rem;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .glass-card li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: var(--secondary);
+      font-weight: bold;
+    }
+
+    /* Code blocks */
+    .code-block {
+      background: #05070c;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.825rem;
+      line-height: 1.5;
+      overflow-x: auto;
+      color: #e5e7eb;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.8);
+    }
+
+    .code-keyword { color: #f43f5e; }
+    .code-string { color: #10b981; }
+    .code-comment { color: #6b7280; }
+    .code-function { color: #3b82f6; }
+    .code-var { color: #fbbf24; }
+
+    /* Footer & Controls */
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+    }
+
+    .slide-progress-container {
+      flex: 1;
+      max-width: 600px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      margin: 0 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      border-radius: 9999px;
+      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .nav-controls {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, border-color 0.2s, transform 0.1s;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .nav-btn:active {
+      transform: scale(0.95);
+    }
+
+    .nav-btn svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: currentColor;
+    }
+
+    .slide-counter {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      min-width: 3rem;
+      text-align: center;
+    }
+
+    /* Diagram items styling */
+    .diag-container {
+      background: rgba(5, 7, 12, 0.6);
+      border: 1px dashed var(--border-color);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .diag-node {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      width: 100%;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    }
+
+    .diag-node.highlight {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.05);
+    }
+
+    .diag-node.highlight-sec {
+      border-color: var(--secondary);
+      background: rgba(6, 182, 212, 0.05);
+    }
+
+    .diag-arrow {
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    /* Key bindings tip */
+    .keyboard-tip {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .kbd {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 3px;
+      padding: 0 3px;
+      font-family: inherit;
+    }
+
+    /* CSS animations */
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
+      50% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.45); }
+    }
+
+    .logo-icon {
+      animation: pulse-glow 4s infinite ease-in-out;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="presentation-container">
+    <!-- Header -->
+    <header>
+      <div class="logo-container">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5.04-6.71l-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71z"/>
+          </svg>
+        </div>
+        <span class="logo-text">SnapVault</span>
+        <span class="badge-devops">DevOps & Cloud Edition</span>
+      </div>
+      
+      <div class="keyboard-tip">
+        Navigate: Use <span class="kbd">←</span> <span class="kbd">→</span> keys or click buttons below
+      </div>
+    </header>
+
+    <!-- Slide Deck viewport -->
+    <main class="slide-viewport">
+
+      <!-- Slide 1: Title -->
+      <div class="slide slide-layout-hero active" id="slide-1">
+        <span class="badge-devops" style="margin-bottom: 1rem;">Project Architecture Presentation</span>
+        <h1 class="slide-title" style="font-size: 3.5rem; max-width: 1000px;">Cloud-Native Design & Continuous Delivery Pipeline</h1>
+        <p class="slide-subtitle" style="font-size: 1.35rem;">
+          Deploying and Monitoring SnapVault using <span class="highlight-text">AWS S3/MinIO</span>, 
+          <span class="highlight-text">Terraform IaC</span>, <span class="highlight-text">Docker Compose</span>, 
+          and a <span class="highlight-text">Prometheus/Grafana</span> Observability Stack.
+        </p>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+          <div class="glass-card" style="padding: 1rem 1.5rem; text-align: left;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Infrastructure</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--secondary);">Terraform (IaC) & S3</div>
+          </div>
+          <div class="glass-card" style="padding: 1rem 1.5rem; text-align: left;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Orchestration</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--primary);">Docker Multi-Container</div>
+          </div>
+          <div class="glass-card" style="padding: 1rem 1.5rem; text-align: left;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Automation</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--accent);">Jenkins Declarative Pipeline</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 2: Multi-Container Architecture -->
+      <div class="slide slide-layout-split" id="slide-2">
+        <div>
+          <h2 class="slide-title">Multi-Container Orchestration</h2>
+          <p class="slide-subtitle">
+            The platform runs as isolated, interconnected microservices controlled via 
+            <span class="highlight-text">Docker Compose</span>. This ensures deterministic environment parity between staging, dev, and production.
+          </p>
+          <div class="glass-card">
+            <div class="card-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+              Core Services Breakdown
+            </div>
+            <ul>
+              <li><strong>Frontend</strong>: Static React build compiled using Vite and served through an Nginx proxy.</li>
+              <li><strong>Backend</strong>: Node.js / Express API endpoint implementing security and storage hooks.</li>
+              <li><strong>Database</strong>: PostgreSQL instance persisting schemas for users and photo metadata.</li>
+              <li><strong>DevOps Stack</strong>: Prometheus server, Grafana visualization dashboards, and Jenkins orchestrator.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="diag-container">
+          <div style="font-size: 0.85rem; font-weight:600; color: var(--text-muted); margin-bottom: -0.5rem;">DOCKER NETWORK ROUTING</div>
+          <div class="diag-node highlight-sec">
+            <span>🌐 Nginx (Frontend) : Port 5173</span>
+          </div>
+          <div class="diag-arrow">⬇ (HTTP Requests / APIs)</div>
+          <div class="diag-node highlight">
+            <span>⚙ Express (Backend) : Port 5000</span>
+          </div>
+          <div class="diag-arrow">⬇ (Metadata Queries & Files)</div>
+          <div style="display: flex; gap: 0.75rem; width: 100%;">
+            <div class="diag-node" style="justify-content: center; flex: 1;">🐘 PostgreSQL : 5432</div>
+            <div class="diag-node" style="justify-content: center; flex: 1; border-color: var(--accent);">☁ AWS S3 / MinIO</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3: Infrastructure as Code (Terraform) -->
+      <div class="slide slide-layout-split" id="slide-3">
+        <div>
+          <h2 class="slide-title">Infrastructure as Code (IaC)</h2>
+          <p class="slide-subtitle">
+            Cloud resources are provisioned declaratively with <span class="highlight-text">Terraform</span>, guaranteeing auditability, repeatability, and eliminating manual AWS console configuration.
+          </p>
+          <div class="glass-card">
+            <div class="card-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+              Terraform Scope & Policies
+            </div>
+            <ul>
+              <li><strong>Target Bucket</strong>: Provisions a globally unique Amazon S3 bucket dedicated to storing uploaded photo blobs.</li>
+              <li><strong>Public Block Bypass</strong>: Bypasses default AWS account-level block-public-access settings to permit targeted sharing.</li>
+              <li><strong>Read-Only S3 Policy</strong>: Attaches a JSON S3 Bucket Policy allowing anonymous read actions (`s3:GetObject`) for rendering image tags.</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="code-block" style="font-size: 0.75rem;">
+<span class="code-comment"># terraform/main.tf</span>
+<span class="code-keyword">resource</span> <span class="code-string">"aws_s3_bucket"</span> <span class="code-string">"snapvault_bucket"</span> {
+  bucket = <span class="code-string">"snapvault-photos-akank"</span>
+}
+
+<span class="code-keyword">resource</span> <span class="code-string">"aws_s3_bucket_policy"</span> <span class="code-string">"policy"</span> {
+  bucket = aws_s3_bucket.snapvault_bucket.id
+  policy = jsonencode({
+    Statement = [{
+      Effect    = <span class="code-string">"Allow"</span>
+      Principal = <span class="code-string">"*"</span>
+      Action    = <span class="code-string">"s3:GetObject"</span>
+      Resource  = <span class="code-string">"${aws_s3_bucket.snapvault_bucket.arn}/*"</span>
+    }]
+  })
+}</div>
+        </div>
+      </div>
+
+      <!-- Slide 4: Storage & Object Lifecycle -->
+      <div class="slide slide-layout-split" id="slide-4">
+        <div>
+          <div class="code-block" style="font-size: 0.73rem;">
+<span class="code-comment">// Decode and upload Base64 to AWS S3 / MinIO</span>
+<span class="code-keyword">const</span> buffer = Buffer.from(matches[2], <span class="code-string">'base64'</span>);
+<span class="code-keyword">const</span> fileName = <span class="code-string">`${id}.${extension}`</span>;
+
+<span class="code-keyword">await</span> s3.send(<span class="code-keyword">new</span> <span class="code-function">PutObjectCommand</span>({
+  Bucket: S3_BUCKET,
+  Key: fileName,
+  Body: buffer,
+  ContentType: mimeType,
+}));
+
+<span class="code-comment">// Construct direct cloud URL</span>
+imageUrl = <span class="code-string">`${s3Url}/${S3_BUCKET}/${fileName}`</span>;
+</div>
+        </div>
+        <div>
+          <h2 class="slide-title">Cloud Storage Lifecycle</h2>
+          <p class="slide-subtitle">
+            Images are uploaded as raw binary buffers to S3, bypassing traditional file-system limits and enabling infinite horizontal scaling.
+          </p>
+          <div class="glass-card">
+            <div class="card-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+              Object Flow Mechanics
+            </div>
+            <ul>
+              <li><strong>Base64 Decoding</strong>: Client sends compact base64 strings. Backend breaks it into mime-types and decodes payloads to Node buffers.</li>
+              <li><strong>S3 Commands</strong>: Sends `PutObjectCommand` utilizing access credentials dynamically injected into Node process environments.</li>
+              <li><strong>Decoupled Architecture</strong>: The image binary is stored in S3; only the lightweight URL and meta details reside in the relational database.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: Observability & Monitoring -->
+      <div class="slide slide-layout-split" id="slide-5">
+        <div>
+          <h2 class="slide-title">Observability & Monitoring</h2>
+          <p class="slide-subtitle">
+            Reliability is monitored continuously using standard cloud DevOps tooling: <span class="highlight-text">Prometheus</span> and <span class="highlight-text">Grafana</span>.
+          </p>
+          <div class="glass-card">
+            <div class="card-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              Telemetry Framework
+            </div>
+            <ul>
+              <li><strong>Custom Histogram</strong>: Tracks `http_request_duration_seconds` to capture API latency trends.</li>
+              <li><strong>Dynamic Labels</strong>: Segments metric dimensions by route path, HTTP method, and returned status code.</li>
+              <li><strong>Dashboard Visualization</strong>: Grafana connects to Prometheus as a datasource, providing visual alerts and request counters.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="diag-container">
+          <div style="font-size: 0.85rem; font-weight:600; color: var(--text-muted); margin-bottom: -0.5rem;">TELEMETRY LOOP</div>
+          <div class="diag-node highlight">
+            <span>⚙ Express Middleware (Captures Request Durations)</span>
+          </div>
+          <div class="diag-arrow">⬇ (Exposes via `/metrics`)</div>
+          <div class="diag-node highlight-sec">
+            <span>🔥 Prometheus server (Scrapes & Stores Time-Series)</span>
+          </div>
+          <div class="diag-arrow">⬇ (Queries metrics database)</div>
+          <div class="diag-node" style="border-color: var(--accent); background: rgba(236,72,153,0.05);">
+            <span>📊 Grafana Dashboards (Visualizes Latency & Error Rates)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 6: Continuous Integration & Deployment (CI/CD) -->
+      <div class="slide slide-layout-split" id="slide-6">
+        <div>
+          <div class="code-block" style="font-size: 0.7rem; max-height: 380px; overflow-y: auto;">
+<span class="code-comment">// Jenkinsfile Declarative Pipeline</span>
+pipeline {
+  agent any
+  stages {
+    stage(<span class="code-string">'Lint & Test'</span>) {
+      steps {
+        sh <span class="code-string">'npm run lint --prefix backend'</span>
+      }
+    }
+    stage(<span class="code-string">'Build Images'</span>) {
+      steps {
+        sh <span class="code-string">'docker-compose build'</span>
+      }
+    }
+    stage(<span class="code-string">'Deploy Infrastructure'</span>) {
+      steps {
+        dir(<span class="code-string">'terraform'</span>) {
+          sh <span class="code-string">'terraform apply -auto-approve'</span>
+        }
+        sh <span class="code-string">'docker-compose up -d'</span>
+      }
+    }
+  }
+}</div>
+        </div>
+        <div>
+          <h2 class="slide-title">CI/CD Automation Pipeline</h2>
+          <p class="slide-subtitle">
+            A containerized <span class="highlight-text">Jenkins Pipeline</span> handles automated compilation, code validation, and server provisioning.
+          </p>
+          <div class="glass-card">
+            <div class="card-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path></svg>
+              Docker-in-Docker Pattern
+            </div>
+            <ul>
+              <li><strong>Socket Mounting</strong>: Shares `/var/run/docker.sock` from the host system into Jenkins.</li>
+              <li><strong>Container Management</strong>: Allows the Jenkins worker container to spawn sibling Docker containers for test isolation and production deployment.</li>
+              <li><strong>Immutable Deployments</strong>: Every code push builds fresh Docker images, completely eliminating drift issues.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 7: Security Architecture -->
+      <div class="slide slide-layout-grid" id="slide-7">
+        <div class="glass-card" style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="card-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+              Data-in-Transit Security
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-top: 0.75rem;">
+              Token-based authentication enforces strict authorization boundaries. JWTs encapsulate claims securely signed using an HMAC-SHA256 algorithm.
+            </p>
+          </div>
+          <div style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--primary); margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+            Header Authorization
+          </div>
+        </div>
+
+        <div class="glass-card" style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="card-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+              IAM & S3 Access Control
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-top: 0.75rem;">
+              No secrets are hardcoded. Cloud credentials (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) are dynamically injected via environment variables on container spin-up.
+            </p>
+          </div>
+          <div style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--secondary); margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+            AWS IAM Policies
+          </div>
+        </div>
+
+        <div class="glass-card" style="height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div class="card-title">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              Cryptographic Hashing
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-top: 0.75rem;">
+              User credentials are salted and hashed utilizing `bcrypt` (10 salt rounds) before database storage, mitigating potential risk from DB leaks.
+            </p>
+          </div>
+          <div style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--accent); margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+            Bcrypt Hashing
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 8: Key Takeaways & Enterprise Enhancements -->
+      <div class="slide slide-layout-hero" id="slide-8">
+        <h2 class="slide-title">Conclusion & Scaling Roadmap</h2>
+        <p class="slide-subtitle" style="max-width: 700px; margin: 0 auto 2.5rem auto;">
+          The current architecture lays down a baseline for standard microservice design. For an enterprise-scale migration, the following path is proposed:
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 900px; text-align: left;">
+          <div class="glass-card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; color: #ffffff; margin-bottom: 0.5rem;">1. Cloud Scalability</h3>
+            <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.5;">
+              Replace the single-node Docker Compose setup with a managed Kubernetes orchestrator (AWS EKS), adding Horizontal Pod Autoscalers (HPA) triggered by Prometheus CPU/Memory metrics.
+            </p>
+          </div>
+          <div class="glass-card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; color: #ffffff; margin-bottom: 0.5rem;">2. Content Delivery Network (CDN)</h3>
+            <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.5;">
+              Instead of retrieving images directly from the S3 origin, front the S3 bucket with **AWS CloudFront** edge caching to drastically reduce page load latencies globally.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Footer Controls -->
+    <footer>
+      <div class="slide-counter">Slide <span id="current-slide-num">1</span> of 8</div>
+      
+      <div class="slide-progress-container">
+        <div class="slide-progress-bar" id="slide-progress"></div>
+      </div>
+      
+      <div class="nav-controls">
+        <button class="nav-btn" id="btn-prev" aria-label="Previous Slide">
+          <svg viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <button class="nav-btn" id="btn-next" aria-label="Next Slide">
+          <svg viewBox="0 0 24 24"><path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let currentSlideIndex = 0;
+
+    const currentSlideNumSpan = document.getElementById('current-slide-num');
+    const progressBar = document.getElementById('slide-progress');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+
+    function updateSlides() {
+      // Manage active classes
+      slides.forEach((slide, index) => {
+        if (index === currentSlideIndex) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+
+      // Update counters & progress
+      currentSlideNumSpan.textContent = currentSlideIndex + 1;
+      const progressPercent = ((currentSlideIndex + 1) / totalSlides) * 100;
+      progressBar.style.width = `${progressPercent}%`;
+
+      // Disable/enable buttons at endpoints
+      btnPrev.disabled = currentSlideIndex === 0;
+      btnNext.disabled = currentSlideIndex === totalSlides - 1;
+
+      // Adjust button opacity visually
+      btnPrev.style.opacity = currentSlideIndex === 0 ? '0.3' : '1';
+      btnPrev.style.cursor = currentSlideIndex === 0 ? 'not-allowed' : 'pointer';
+      btnNext.style.opacity = currentSlideIndex === totalSlides - 1 ? '0.3' : '1';
+      btnNext.style.cursor = currentSlideIndex === totalSlides - 1 ? 'not-allowed' : 'pointer';
+    }
+
+    function nextSlide() {
+      if (currentSlideIndex < totalSlides - 1) {
+        currentSlideIndex++;
+        updateSlides();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlideIndex > 0) {
+        currentSlideIndex--;
+        updateSlides();
+      }
+    }
+
+    // Event listeners
+    btnPrev.addEventListener('click', prevSlide);
+    btnNext.addEventListener('click', nextSlide);
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'Enter') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      }
+    });
+
+    // Initialize first state
+    updateSlides();
+  </script>
+</body>
+</html>

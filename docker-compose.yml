@@ -26,15 +26,16 @@ services:
       - "5000:5000"
     environment:
       PORT: 5000
-      DATABASE_URL: postgresql://snapvault:snapsecurepass@db:5432/snapdb
-      JWT_SECRET: snapvault-super-secret-key-1337
-      S3_ENDPOINT: http://minio:9000
-      S3_ACCESS_KEY: snapvault-admin
-      S3_SECRET_KEY: snapvault-secure-s3-pass
-      S3_BUCKET: snapvault-photos
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      AWS_REGION: ${AWS_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_CLIENT_EXTERNAL_URL: ${S3_CLIENT_EXTERNAL_URL}
     depends_on:
       - db
-      - minio
     restart: always
 
   # React Frontend served via Nginx container
@@ -47,21 +48,6 @@ services:
       - "5173:80"
     depends_on:
       - backend
-    restart: always
-
-  # S3-Compatible Local Object Storage (MinIO)
-  minio:
-    image: quay.io/minio/minio:latest
-    container_name: snapvault-minio
-    ports:
-      - "9000:9000"     # API Port (where our backend uploads files)
-      - "9001:9001"     # Console UI Port (for inspecting files in browser)
-    environment:
-      MINIO_ROOT_USER: snapvault-admin
-      MINIO_ROOT_PASSWORD: snapvault-secure-s3-pass
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
     restart: always
 
   # Jenkins CI/CD Automation container
@@ -116,7 +102,6 @@ services:
 
 volumes:
   postgres_data:
-  minio_data:
   jenkins_data:
   prometheus_data:
   grafana_data:

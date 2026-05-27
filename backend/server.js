@@ -59,14 +59,18 @@ let useMemoryDb = false;
 
 // S3 Client Configuration (for MinIO / AWS S3 compatibility)
 const s3Config = {
-  endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
-  forcePathStyle: true, // Required for MinIO
-  region: 'us-east-1', // Placeholder region
+  region: process.env.AWS_REGION || 'us-east-1',
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY || 'snapvault-admin',
     secretAccessKey: process.env.S3_SECRET_KEY || 'snapvault-secure-s3-pass',
   },
 };
+
+// Use custom endpoint and forcePathStyle only for local MinIO
+if (process.env.S3_ENDPOINT && process.env.S3_ENDPOINT !== 'AWS') {
+  s3Config.endpoint = process.env.S3_ENDPOINT;
+  s3Config.forcePathStyle = true;
+}
 
 const s3 = new S3Client(s3Config);
 const S3_BUCKET = process.env.S3_BUCKET || 'snapvault-photos';
